@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon Bouncing Ball</title>
+    <style>
+        /* Setzt die Ränder zurück und sorgt für einen komplett schwarzen, bildschirmfüllenden Hintergrund */
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #050505; /* Sehr dunkles Grau/Schwarz für besten Neon-Kontrast */
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="neonCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('neonCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Passt das Canvas immer an die Fenstergröße an
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Eine Auswahl an leuchtenden Neon-Farben
+        const neonColors = [
+            '#ff00ff', // Magenta
+            '#00ffff', // Cyan
+            '#00ff00', // Neon Grün
+            '#ffff00', // Gelb
+            '#ff0000', // Rot
+            '#ff8800'  // Orange
+        ];
+
+        // Die Eigenschaften unseres Balls
+        let ball = {
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            dx: 6, // Geschwindigkeit X-Achse
+            dy: 5, // Geschwindigkeit Y-Achse
+            radius: 20,
+            color: neonColors[0]
+        };
+
+        let flashOpacity = 0; // Startwert für den Blitz-Effekt
+
+        function getRandomNeonColor() {
+            return neonColors[Math.floor(Math.random() * neonColors.length)];
+        }
+
+        function drawBall() {
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+            ctx.fillStyle = ball.color;
+            
+            // Hier entsteht der Neon-Glow
+            ctx.shadowBlur = 25;
+            ctx.shadowColor = ball.color;
+            
+            ctx.fill();
+            ctx.closePath();
+            
+            // Schatten zurücksetzen, damit andere Elemente nicht leuchten
+            ctx.shadowBlur = 0;
+        }
+
+        function drawFlash() {
+            if (flashOpacity > 0) {
+                ctx.fillStyle = `rgba(255, 255, 255, ${flashOpacity})`;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                flashOpacity -= 0.05; // Lässt den Blitz langsam verblassen
+            }
+        }
+
+        function update() {
+            // Löscht den vorherigen Frame mit leichter Transparenz für einen coolen "Motion Blur" (Bewegungsunschärfe)
+            ctx.fillStyle = 'rgba(5, 5, 5, 0.3)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            drawFlash();
+            drawBall();
+
+            let hitEdge = false;
+
+            // Kollisionsabfrage: Rand rechts oder links
+            if (ball.x + ball.dx > canvas.width - ball.radius || ball.x + ball.dx < ball.radius) {
+                ball.dx = -ball.dx; // Richtung umkehren
+                hitEdge = true;
+            }
+            // Kollisionsabfrage: Rand unten oder oben
+            if (ball.y + ball.dy > canvas.height - ball.radius || ball.y + ball.dy < ball.radius) {
+                ball.dy = -ball.dy; // Richtung umkehren
+                hitEdge = true;
+            }
+
+            // Was passiert beim Aufprall?
+            if (hitEdge) {
+                ball.color = getRandomNeonColor(); // Magischer Farbwechsel
+                flashOpacity = 0.4; // Löst den Blitz aus (Wert zwischen 0 und 1)
+            }
+
+            // Position für den nächsten Frame aktualisieren
+            ball.x += ball.dx;
+            ball.y += ball.dy;
+
+            // Loop aufrufen
+            requestAnimationFrame(update);
+        }
+
+        // Animation starten
+        update();
+    </script>
+</body>
+</html>

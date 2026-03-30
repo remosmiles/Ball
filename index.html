@@ -3,16 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Neon Bouncing Ball</title>
+    <title>Neon Bouncing Ball 2.0</title>
     <style>
-        /* Setzt die Ränder zurück und sorgt für einen komplett schwarzen, bildschirmfüllenden Hintergrund */
         body, html {
             margin: 0;
             padding: 0;
             width: 100%;
             height: 100%;
             overflow: hidden;
-            background-color: #050505; /* Sehr dunkles Grau/Schwarz für besten Neon-Kontrast */
+            background-color: #050505;
+            cursor: crosshair; /* Passt besser zum interaktiven Vibe */
         }
         canvas {
             display: block;
@@ -26,7 +26,6 @@
         const canvas = document.getElementById('neonCanvas');
         const ctx = canvas.getContext('2d');
 
-        // Passt das Canvas immer an die Fenstergröße an
         function resizeCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
@@ -34,45 +33,78 @@
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
 
-        // Eine Auswahl an leuchtenden Neon-Farben
-        const neonColors = [
-            '#ff00ff', // Magenta
-            '#00ffff', // Cyan
-            '#00ff00', // Neon Grün
-            '#ffff00', // Gelb
-            '#ff0000', // Rot
-            '#ff8800'  // Orange
-        ];
+        const neonColors = ['#ff00ff', '#00ffff', '#00ff00', '#ffff00', '#ff0000', '#ff8800'];
 
-        // Die Eigenschaften unseres Balls
         let ball = {
             x: canvas.width / 2,
             y: canvas.height / 2,
-            dx: 6, // Geschwindigkeit X-Achse
-            dy: 5, // Geschwindigkeit Y-Achse
+            dx: 6,
+            dy: 5,
             radius: 20,
-            color: neonColors[0]
+            color: neonColors[0],
+            baseSpeed: 7
         };
 
-        let flashOpacity = 0; // Startwert für den Blitz-Effekt
+        let flashOpacity = 0;
+        let particles = [];
+        let mouse = { x: null, y: null };
+
+        // Maus-Position tracken
+        window.addEventListener('mousemove', (e) => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+        });
+
+        // Wenn die Maus den Bildschirm verlässt
+        window.addEventListener('mouseout', () => {
+            mouse.x = null;
+            mouse.y = null;
+        });
 
         function getRandomNeonColor() {
             return neonColors[Math.floor(Math.random() * neonColors.length)];
+        }
+
+        // Neue Klasse für die Funken-Explosion
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                // Zufällige Geschwindigkeit und Richtung für die Funken
+                this.dx = (Math.random() - 0.5) * 15;
+                this.dy = (Math.random() - 0.5) * 15;
+                this.radius = Math.random() * 3 + 1; // Unterschiedlich große Funken
+                this.color = color;
+                this.alpha = 1;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = this.color;
+                ctx.fill();
+                ctx.restore();
+            }
+
+            update() {
+                this.x += this.dx;
+                this.y += this.dy;
+                this.alpha -= 0.03; // Wie schnell die Funken verblassen
+            }
         }
 
         function drawBall() {
             ctx.beginPath();
             ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
             ctx.fillStyle = ball.color;
-            
-            // Hier entsteht der Neon-Glow
-            ctx.shadowBlur = 25;
+            ctx.shadowBlur = 30; // Etwas stärkerer Glow
             ctx.shadowColor = ball.color;
-            
             ctx.fill();
             ctx.closePath();
-            
-            // Schatten zurücksetzen, damit andere Elemente nicht leuchten
             ctx.shadowBlur = 0;
         }
 
@@ -80,46 +112,83 @@
             if (flashOpacity > 0) {
                 ctx.fillStyle = `rgba(255, 255, 255, ${flashOpacity})`;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
-                flashOpacity -= 0.05; // Lässt den Blitz langsam verblassen
+                flashOpacity -= 0.05;
+            }
+        }
+
+        function handleMouseInteraction() {
+            if (mouse.x && mouse.y) {
+                let dx = ball.x - mouse.x;
+                let dy = ball.y - mouse.y;
+                let distance = Math.sqrt(dx * dx + dy * dy);
+
+                // Wenn die Maus näher als 150 Pixel kommt, stößt sie den Ball ab
+                if (distance < 150) {
+                    let force = (150 - distance) / 150;
+                    ball.dx += (dx / distance) * force * 2;
+                    ball.dy += (dy / distance) * force * 2;
+                }
+            }
+
+            // Geschwindigkeitsbegrenzung (damit der Ball nicht ins Unendliche beschleunigt)
+            let currentSpeed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
+            if (currentSpeed > 15) {
+                ball.dx = (ball.dx / currentSpeed) * 15;
+                ball.dy = (ball.dy / currentSpeed) * 15;
+            } else if (currentSpeed < ball.baseSpeed && !mouse.x) {
+                // Ball beschleunigt langsam wieder auf Basis-Geschwindigkeit, wenn er zu langsam wird
+                ball.dx *= 1.01;
+                ball.dy *= 1.01;
             }
         }
 
         function update() {
-            // Löscht den vorherigen Frame mit leichter Transparenz für einen coolen "Motion Blur" (Bewegungsunschärfe)
-            ctx.fillStyle = 'rgba(5, 5, 5, 0.3)';
+            // Etwas dunklerer Motion Blur für einen längeren Schweif
+            ctx.fillStyle = 'rgba(5, 5, 5, 0.2)'; 
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             drawFlash();
+            handleMouseInteraction();
             drawBall();
+
+            // Partikel updaten und zeichnen
+            for (let i = particles.length - 1; i >= 0; i--) {
+                particles[i].draw();
+                particles[i].update();
+                // Partikel löschen, wenn sie unsichtbar sind
+                if (particles[i].alpha <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
 
             let hitEdge = false;
 
-            // Kollisionsabfrage: Rand rechts oder links
             if (ball.x + ball.dx > canvas.width - ball.radius || ball.x + ball.dx < ball.radius) {
-                ball.dx = -ball.dx; // Richtung umkehren
+                ball.dx = -ball.dx;
                 hitEdge = true;
             }
-            // Kollisionsabfrage: Rand unten oder oben
             if (ball.y + ball.dy > canvas.height - ball.radius || ball.y + ball.dy < ball.radius) {
-                ball.dy = -ball.dy; // Richtung umkehren
+                ball.dy = -ball.dy;
                 hitEdge = true;
             }
 
-            // Was passiert beim Aufprall?
             if (hitEdge) {
-                ball.color = getRandomNeonColor(); // Magischer Farbwechsel
-                flashOpacity = 0.4; // Löst den Blitz aus (Wert zwischen 0 und 1)
+                ball.color = getRandomNeonColor();
+                flashOpacity = 0.3; 
+                
+                // Erzeuge 20 bis 30 Funken beim Aufprall
+                let particleCount = Math.random() * 10 + 20;
+                for(let i = 0; i < particleCount; i++) {
+                    particles.push(new Particle(ball.x, ball.y, ball.color));
+                }
             }
 
-            // Position für den nächsten Frame aktualisieren
             ball.x += ball.dx;
             ball.y += ball.dy;
 
-            // Loop aufrufen
             requestAnimationFrame(update);
         }
 
-        // Animation starten
         update();
     </script>
 </body>
